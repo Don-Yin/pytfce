@@ -4,7 +4,7 @@ Fast probabilistic Threshold-Free Cluster Enhancement in Python.
 
 ## Overview
 
-`pytfce` is a pure-Python package for probabilistic TFCE (pTFCE), providing analytical inference on neuroimaging statistical maps without permutation testing. It implements a baseline pTFCE faithful to the original R package (Spisák et al. 2019) and a novel hybrid eTFCE–GRF that combines union-find cluster retrieval with analytical GRF p-values. On real brain data (~2M voxels), `pytfce` is 73× faster than the R pTFCE package while producing concordant results.
+`pytfce` is a pure-Python package for probabilistic TFCE (pTFCE) that provides analytical inference on neuroimaging statistical maps without permutation testing. It implements a baseline pTFCE faithful to the original R package (Spisák et al. 2019) and a novel hybrid eTFCE–GRF that combines union-find cluster retrieval with analytical GRF p-values. On real brain data (~2M voxels), `pytfce` is 73× faster than the R pTFCE package and produces concordant results.
 
 ## Installation
 
@@ -49,15 +49,15 @@ result = ptfce_exact(Z, mask)
 | `ptfce_baseline` | pTFCE (threshold grid + CCL) | ~5 s | Standard use, small–medium volumes |
 | `ptfce_exact` | eTFCE–GRF (union-find + GRF) | ~84 s | Large volumes, finer threshold grids |
 
-Both variants use identical GRF p-values and aggregation. The baseline sweeps a threshold grid with connected-component labelling at each level; the hybrid uses a single union-find sweep, eliminating discretisation error at the cost of higher constant overhead.
+Both variants use identical GRF p-values and aggregation. The baseline sweeps a threshold grid with connected-component labelling at each level; the hybrid uses a single union-find sweep, which eliminates discretisation error at higher constant computational cost.
 
 ## Validation
 
-**Spatial detection** — Phantom study (64³ volume, 80 subjects, 3 embedded blobs). All pTFCE variants achieve Dice = 1.0:
+**Spatial detection.** Phantom study (64³ volume, 80 subjects, 3 embedded blobs). All pTFCE variants achieve Dice = 1.0:
 
 ![Spatial detection](paper/figures/fig-spatial-detection.png)
 
-**Runtime** — Log-scale comparison across five methods (emulated phantom). Py pTFCE runs in 0.34 s vs 21.7 s for R pTFCE (64× speedup):
+**Runtime.** Log-scale comparison across five methods (emulated phantom). Py pTFCE runs in 0.34 s vs 21.7 s for R pTFCE (64× speedup):
 
 ![Runtime comparison](paper/figures/fig-runtime-log.png)
 

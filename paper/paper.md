@@ -29,35 +29,36 @@ bibliography: paper.bib
 # Summary
 
 `pytfce` is a pure-Python package for probabilistic Threshold-Free Cluster
-Enhancement (pTFCE), providing analytical inference on neuroimaging statistical
-maps without permutation testing. The package implements two complementary
-variants: a baseline pTFCE that faithfully reproduces the original R
-implementation [@spisak2019], and a novel hybrid eTFCE--GRF that combines
-union-find cluster retrieval from exact TFCE [@chen2026] with Gaussian Random
-Field (GRF) analytical $p$-values [@worsley1992]. On real brain data (~2
-million voxels), `pytfce` is 73$\times$ faster than the canonical R pTFCE
-package while producing concordant results (voxel-wise $r = 0.997$ between
-Python variants; $r > 0.86$ against R pTFCE on real brain data).
+Enhancement (pTFCE) that provides analytical inference on neuroimaging
+statistical maps without permutation testing. The package implements two
+complementary variants: a baseline pTFCE that faithfully reproduces the
+original R implementation [@spisak2019], and a novel hybrid eTFCE--GRF that
+combines union-find cluster retrieval from exact TFCE [@chen2026] with
+Gaussian Random Field (GRF) analytical $p$-values [@worsley1992]. On real
+brain data (~2 million voxels), `pytfce` is 73$\times$ faster than the
+canonical R pTFCE package and produces concordant results (voxel-wise
+$r = 0.997$ between Python variants; $r > 0.86$ against R pTFCE on real
+brain data).
 
 # Statement of need
 
 Threshold-Free Cluster Enhancement [@smith2009] is widely used in neuroimaging
 to detect spatially extended effects without choosing an arbitrary
 cluster-forming threshold. However, standard TFCE requires permutation testing
-[@winkler2014], typically 5,000 relabellings, to assign $p$-values, costing
-35--87 hours per analysis on whole-brain voxel-based morphometry (VBM) data.
-Probabilistic TFCE [@spisak2019] replaces permutations with analytical
-$p$-values derived from GRF theory, reducing runtime to seconds, but until now
-was only available in R.
+[@winkler2014], typically 5,000 relabellings, to assign $p$-values, at a cost
+of 35 to 87 hours per analysis on whole-brain voxel-based morphometry (VBM)
+data. Probabilistic TFCE [@spisak2019] replaces permutations with analytical
+$p$-values derived from GRF theory, which reduces runtime to seconds, but
+until now was only available in R.
 
-Researchers using Python-based neuroimaging pipelines (e.g., Nilearn
-[@nilearn2024], NiBabel, FSL's Python wrappers) had no native pTFCE option,
-forcing either R subprocess calls or falling back to expensive permutation
-TFCE. `pytfce` fills this gap with a `pip`-installable package requiring only
-NumPy, SciPy, and `connected-components-3d` [@cc3d]. The target audience is
-neuroimaging researchers using Python-based analysis pipelines who require fast,
-reproducible whole-brain statistical inference without R interoperability
-overhead.
+Researchers who use Python-based neuroimaging pipelines (e.g., Nilearn
+[@nilearn2024], NiBabel, FSL's Python wrappers) had no native pTFCE option
+and were forced to use either R subprocess calls or expensive permutation
+TFCE. `pytfce` fills this gap with a `pip`-installable package that requires
+only NumPy, SciPy, and `connected-components-3d` [@cc3d]. The target audience
+is neuroimaging researchers who use Python-based analysis pipelines and need
+fast, reproducible whole-brain statistical inference without the additional
+computational cost of R interoperability.
 
 # State of the field
 
@@ -107,12 +108,12 @@ Supporting modules provide smoothness estimation matching FSL's `smoothest`
 (`smoothness.py`), GRF cluster-size distributions (`grf.py`), and
 FWER-corrected $Z$-thresholds via Euler characteristic density
 (`fwer_z_threshold`). The user-facing API exposes two main
-functions---`ptfce_baseline(Z, mask)` and `ptfce_exact(Z, mask)`---each
-returning a dict with enhanced $p$-values, $Z$-scores, smoothness diagnostics,
-and timing information.
+functions, `ptfce_baseline(Z, mask)` and `ptfce_exact(Z, mask)`, each of
+which returns a dict with enhanced $p$-values, $Z$-scores, smoothness
+diagnostics, and timing information.
 
-The key design trade-off is between the baseline and the hybrid. The baseline
-is faster on small volumes because the LUT amortises the GRF integral cost,
+The design trade-off is between the baseline and the hybrid. The baseline is
+faster on small volumes because the LUT amortises the GRF integral cost,
 while the hybrid scales better on large volumes where repeated
 connected-component labelling becomes the bottleneck.
 
@@ -120,11 +121,11 @@ connected-component labelling becomes the bottleneck.
 
 `pytfce` has been validated against the reference R `pTFCE` package through a
 Monte Carlo simulation study on synthetic phantoms: 200 null replications
-confirm FWER control ($\hat{\alpha} = 0.000$, 95% CI $[0, 0.019]$), and 500
-power-curve trials across 10 signal amplitudes show both variants achieve
+support FWER control ($\hat{\alpha} = 0.000$, 95% CI $[0, 0.019]$), and 500
+power-curve trials across 10 signal amplitudes show that both variants achieve
 identical spatial detection (Dice $= 1.0$) at sufficient signal strength
 (\autoref{fig:detection}). Runtime benchmarks on both phantom and real brain
-data demonstrate 64--73$\times$ speedup over R pTFCE (\autoref{fig:runtime}).
+data show a 64 to 73$\times$ speedup over R pTFCE (\autoref{fig:runtime}).
 Reproducible benchmarking scripts and a synthetic phantom generator are
 included in the package (`pytfce.utils.phantoms`). A companion methodology
 paper with real-brain validation is in preparation for NeuroImage.
