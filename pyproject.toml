@@ -7,7 +7,7 @@ name = "pytfce"
 version = "0.1.0"
 description = "Fast probabilistic Threshold-Free Cluster Enhancement in Python"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = {text = "MIT"}
 authors = [
     {name = "Don Yin", email = "dy323@cam.ac.uk"},
