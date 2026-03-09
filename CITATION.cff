@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "pytfce: Fast Probabilistic Threshold-Free Cluster Enhancement in Python"
+type: software
+version: 0.1.0
+date-released: 2026-03-09
+license: MIT
+url: https://github.com/Don-Yin/pytfce
+repository-code: https://github.com/Don-Yin/pytfce
+authors:
+  - family-names: Yin
+    given-names: Don
+    orcid: https://orcid.org/0000-0002-8971-1057
+    email: dy323@cam.ac.uk
+    affiliation: University of Cambridge
+  - family-names: Chen
+    given-names: Hao
+    orcid: https://orcid.org/0009-0009-5281-4616
+    email: hc666@cam.ac.uk
+    affiliation: University of Cambridge
+keywords:
+  - neuroimaging
+  - TFCE
+  - pTFCE
+  - statistical inference
+  - VBM
+  - Gaussian random field

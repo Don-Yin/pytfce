@@ -13,7 +13,7 @@ Please open a GitHub issue for:
 ## Development setup
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/pytfce.git
+git clone https://github.com/Don-Yin/pytfce.git
 cd pytfce
 pip install -e ".[all]"
 pip install pytest

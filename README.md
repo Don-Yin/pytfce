@@ -9,11 +9,10 @@ Fast probabilistic Threshold-Free Cluster Enhancement in Python.
 ## Installation
 
 ```bash
-# from PyPI (not yet published)
 pip install pytfce
 
 # development install
-git clone https://github.com/your-org/pytfce.git
+git clone https://github.com/Don-Yin/pytfce.git
 cd pytfce
 pip install -e .
 ```

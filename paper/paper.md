@@ -10,12 +10,12 @@ tags:
   - Gaussian random field
 authors:
   - name: Don Yin
-    orcid: 0000-0000-0000-0000
+    orcid: 0000-0002-8971-1057
     corresponding: true
     email: dy323@cam.ac.uk
     affiliation: 1
   - name: Hao Chen
-    orcid: 0000-0000-0000-0000
+    orcid: 0009-0009-5281-4616
     email: hc666@cam.ac.uk
     affiliation: 1
 affiliations:
@@ -141,12 +141,14 @@ dots.](figures/fig-runtime-log.png){#fig:runtime width="100%"}
 
 # AI usage disclosure
 
-GitHub Copilot was used during development for code scaffolding and
-debugging. All generated code was reviewed, tested against the reference R
-implementation, and validated through Monte Carlo simulation (200 null
-replications, 500 power-curve trials). The mathematical formulations follow
-Spisák et al. [-@spisak2019] and Chen et al. [-@chen2026] exactly; no
-AI-generated derivations were used.
+GitHub Copilot (GPT-5.4, March 2026) was used for autocompletion during
+development of test scaffolding and boilerplate I/O code. Core algorithm
+modules (`ptfce_baseline`, `ptfce_exact`, `grf`, `smoothness`) were written
+manually following the mathematical formulations in Spisák et al.
+[-@spisak2019] and Chen et al. [-@chen2026]. All code was reviewed, tested
+against the reference R implementation, and validated through Monte Carlo
+simulation (200 null replications, 500 power-curve trials). No AI-generated
+derivations were used.
 
 # Acknowledgements
 
