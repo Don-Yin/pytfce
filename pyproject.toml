@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pytfce"
-version = "0.1.0"
+version = "0.1.1"
 description = "Fast probabilistic Threshold-Free Cluster Enhancement in Python"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -41,3 +41,6 @@ Issues = "https://github.com/Don-Yin/pytfce/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+pytfce = ["*.R"]

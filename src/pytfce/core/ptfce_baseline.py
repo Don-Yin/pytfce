@@ -90,7 +90,7 @@ def _disk_cache_dir() -> Path:
     Resolution order:
     1. $RESULTS_DIR/tfce/.lut_cache  (SLURM -- RESULTS_DIR set by slurm-common.sh)
     2. $PYTFCE_CACHE_DIR             (explicit override)
-    3. <cwd>/.results/tfce/.lut_cache (local -- experiments always run from project root)
+    3. <cwd>/.results/.lut_cache     (local -- experiments always run from project root)
     """
     import os
     results = os.environ.get("RESULTS_DIR")
@@ -99,7 +99,7 @@ def _disk_cache_dir() -> Path:
     elif os.environ.get("PYTFCE_CACHE_DIR"):
         cache_dir = Path(os.environ["PYTFCE_CACHE_DIR"])
     else:
-        cache_dir = Path.cwd() / ".results" / "tfce" / ".lut_cache"
+        cache_dir = Path.cwd() / ".results" / ".lut_cache"
     cache_dir.mkdir(parents=True, exist_ok=True)
     return cache_dir
 
@@ -121,7 +121,8 @@ def get_or_build_lut(
     Checks in-memory cache first, then disk cache, then builds via
     build_pvox_lut and saves to disk.
     """
-    key = (V, round(Rd, 1), z_est_thr, density, round(h_max))
+    _LUT_VERSION = 2  # v2: log-p interpolation (v1 was linear-p)
+    key = (V, round(Rd, 1), z_est_thr, density, round(h_max), _LUT_VERSION)
     if key in _LUT_CACHE:
         return _LUT_CACHE[key]
     cache_path = _disk_cache_path(key)
@@ -167,16 +168,21 @@ def build_pvox_lut(
     h_max: float = 12.0,
     verbose: bool = True,
 ) -> RegularGridInterpolator:
-    """Pre-compute ``pvox_clust`` on a ``(log_c, h)`` grid.
+    """Pre-compute ``pvox_clust`` on a ``(log_c, h)`` grid in log-p space.
 
-    Returns a :class:`~scipy.interpolate.RegularGridInterpolator` that can
-    replace individual ``quad()`` evaluations with fast bilinear lookups.
+    Stores ``log(p)`` in the table so that bilinear interpolation operates
+    on the log scale, which is the correct geometry for p-values that span
+    hundreds of orders of magnitude.
+
+    Returns a :class:`~scipy.interpolate.RegularGridInterpolator` whose
+    output is ``log(p)`` (caller must exponentiate).
     """
     if c_max is None:
         c_max = V
     log_c_grid = np.linspace(0, np.log1p(c_max), n_c)
     h_grid = np.linspace(z_est_thr, h_max, n_h)
-    table = np.ones((n_c, n_h), dtype=np.float64)
+    _LOG_FLOOR = math.log(1e-300)
+    table = np.zeros((n_c, n_h), dtype=np.float64)  # log(1.0) = 0
 
     t0 = time.perf_counter()
     for ci, lc in enumerate(log_c_grid):
@@ -184,7 +190,8 @@ def build_pvox_lut(
         if c < 1:
             continue
         for hi, h in enumerate(h_grid):
-            table[ci, hi] = pvox_clust(V, Rd, c, h, z_est_thr)
+            p = pvox_clust(V, Rd, c, h, z_est_thr)
+            table[ci, hi] = max(math.log(max(p, 1e-300)), _LOG_FLOOR)
         if verbose:
             _bar(ci + 1, n_c, prefix="LUT build", t0=t0)
 
@@ -203,7 +210,10 @@ def pvox_clust_lut(
     h: float,
     z_est_thr: float = 1.3,
 ) -> float:
-    """Fast ``pvox_clust`` via LUT bilinear interpolation.
+    """Fast ``pvox_clust`` via LUT bilinear interpolation in log-p space.
+
+    The LUT stores ``log(p)``; interpolation in log space preserves the
+    correct geometry across the many orders of magnitude p-values span.
 
     Falls back to the marginal survival function for degenerate inputs
     (``c ≤ 0`` or ``h`` below the estimation threshold).
@@ -211,7 +221,7 @@ def pvox_clust_lut(
     Parameters
     ----------
     lut : RegularGridInterpolator
-        Table built by :func:`build_pvox_lut`.
+        Table built by :func:`build_pvox_lut` (stores log-p).
     c : float
         Cluster size (voxels).
     h : float
@@ -226,8 +236,9 @@ def pvox_clust_lut(
     """
     if c <= 0 or h < z_est_thr:
         return float(stats.norm.sf(h)) if np.isfinite(h) else 1.0
-    val = float(lut(np.array([[np.log1p(c), h]]))[0])
-    return float(np.clip(val, 1e-300, 1.0))
+    log_val = float(lut(np.array([[np.log1p(c), h]]))[0])
+    log_val = max(log_val, math.log(1e-300))
+    return float(min(math.exp(log_val), 1.0))
 
 
 # ---------------------------------------------------------------------------
