@@ -88,6 +88,21 @@ If you use `pytfce` in your research, please cite:
 }
 ```
 
+For the companion methodology paper, please also cite:
+
+```bibtex
+@misc{yin2026hybrid,
+  author       = {Yin, Don and Chen, Hao and Miki, Takeshi and Liu, Boxing
+                  and Yang, Enyu},
+  title        = {Hybrid eTFCE--GRF: Exact Cluster-Size Retrieval with
+                  Analytical $p$-Values for Voxel-Based Morphometry},
+  year         = {2026},
+  eprint       = {2603.11344},
+  archiveprefix = {arXiv},
+  url          = {https://arxiv.org/abs/2603.11344}
+}
+```
+
 ## License
 
 MIT

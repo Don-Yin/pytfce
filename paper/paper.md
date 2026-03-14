@@ -128,7 +128,7 @@ identical spatial detection (Dice $= 1.0$) at sufficient signal strength
 data show a 64 to 73$\times$ speedup over R pTFCE (\autoref{fig:runtime}).
 Reproducible benchmarking scripts and a synthetic phantom generator are
 included in the package (`pytfce.utils.phantoms`). A companion methodology
-paper with real-brain validation is in preparation for NeuroImage.
+paper with real-brain validation is available as a preprint [@yin2026].
 
 ![Spatial detection on a synthetic phantom ($64^3$, 80 subjects, 3 embedded
 signal blobs). Top: input Z-map and pTFCE-enhanced significance maps for each
