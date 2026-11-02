@@ -121,7 +121,8 @@ def get_or_build_lut(
     Checks in-memory cache first, then disk cache, then builds via
     build_pvox_lut and saves to disk.
     """
-    _LUT_VERSION = 2  # v2: log-p interpolation (v1 was linear-p)
+    # v3: underflow-safe pvox_clust, R-faithful E[S] (no floor), c<1 LUT nodes = p(c=1); v2: log-p (v1: linear-p)
+    _LUT_VERSION = 3
     key = (V, round(Rd, 1), z_est_thr, density, round(h_max), _LUT_VERSION)
     if key in _LUT_CACHE:
         return _LUT_CACHE[key]
@@ -186,9 +187,9 @@ def build_pvox_lut(
 
     t0 = time.perf_counter()
     for ci, lc in enumerate(log_c_grid):
-        c = np.expm1(lc)
-        if c < 1:
-            continue
+        # nodes with c < 1 voxel must not stay at log p = 0: they contaminate the bilinear interpolation
+        # of single-voxel clusters (c = 1 lies between the nodes c ~ 0.96 and c ~ 1.16)
+        c = max(float(np.expm1(lc)), 1.0)
         for hi, h in enumerate(h_grid):
             p = pvox_clust(V, Rd, c, h, z_est_thr)
             table[ci, hi] = max(math.log(max(p, 1e-300)), _LOG_FLOOR)
@@ -362,6 +363,8 @@ def ptfce(
     logp_grid = np.linspace(0, logp_max, Nh)
     delta = logp_grid[1] - logp_grid[0] if Nh > 1 else logp_max
     h_grid = stats.norm.isf(np.exp(-logp_grid))
+    # The logsf/exp/isf round trip can overshoot by one ulp, excluding peaks.
+    h_grid[-1] = min(h_grid[-1], z_max)
     h_grid[0] = -1e10
 
     # ---- connectivity structure --------------------------------------
@@ -516,6 +519,8 @@ def _run_threshold_sweep(
     logp_grid = np.linspace(0, logp_max, Nh)
     delta = logp_grid[1] - logp_grid[0] if Nh > 1 else logp_max
     h_grid = stats.norm.isf(np.exp(-logp_grid))
+    # The logsf/exp/isf round trip can overshoot by one ulp, excluding peaks.
+    h_grid[-1] = min(h_grid[-1], z_max)
     h_grid[0] = -1e10
 
     _use_cc3d = (connectivity == 6)

@@ -18,6 +18,8 @@ _INV_SQRT_2PI = 1.0 / math.sqrt(2.0 * math.pi)
 _INV_SQRT_2 = 1.0 / math.sqrt(2.0)
 _UPPER_Z = 37.06503921751289  # = min(38.0, norm.isf(1e-300)), precomputed
 _SF_UPPER = 1e-300  # norm.sf(_UPPER_Z) ≈ 1e-300
+# R pTFCE does not floor E[S] at one voxel inside pvox.clust; set True to restore the earlier python behaviour.
+_CLAMP_ES_IN_PVOX = False
 
 
 def expected_cluster_size(h: np.ndarray, V: int, Rd: float) -> np.ndarray:
@@ -43,9 +45,16 @@ def expected_cluster_size(h: np.ndarray, V: int, Rd: float) -> np.ndarray:
     return np.exp(log_ec).clip(min=1.0)
 
 
-def _expected_cluster_size_scalar(h: float, log_V: float, log_Rd: float) -> float:
-    """Scalar fast-path for expected_cluster_size (avoids array alloc)."""
-    log_sf = math.log(0.5 * math.erfc(h * _INV_SQRT_2) + 1e-300)
+def _expected_cluster_size_scalar(h: float, log_V: float, log_Rd: float,
+                                  clamp: bool = True) -> float:
+    """Scalar fast-path for expected_cluster_size (avoids array alloc).
+
+    ``clamp=False`` reproduces R pTFCE, which does not floor E[S] at 1 voxel.
+    """
+    sf = 0.5 * math.erfc(h * _INV_SQRT_2)
+    # exact log-survival in the far tail: the former "+ 1e-300" made E[S] grow (so lam fall) again
+    # beyond z ~ 37, a non-monotone artefact that the exponent scaling in pvox_clust must not see
+    log_sf = math.log(sf) if sf > 1e-290 else float(special.log_ndtr(-h))
     log_num = log_V + log_sf
     if h >= 1.1:
         h2 = h * h
@@ -54,7 +63,7 @@ def _expected_cluster_size_scalar(h: float, log_V: float, log_Rd: float) -> floa
     else:
         log_ec = log_num
     ec = math.exp(log_ec)
-    return ec if ec > 1.0 else 1.0
+    return ec if (ec > 1.0 or not clamp) else 1.0
 
 
 def cluster_pdf(c: float, lam: float) -> float:
@@ -75,23 +84,39 @@ def pvox_clust(V: int, Rd: float, c: float, h: float,
 
     log_V = math.log(V)
     log_Rd = math.log(Rd)
-    c_13 = c ** (1.0 / 3.0)
     c_23 = c ** (2.0 / 3.0)
+    clamp = _CLAMP_ES_IN_PVOX
 
-    def integrand(xi: float) -> float:
-        ec = _expected_cluster_size_scalar(xi, log_V, log_Rd)
-        lam = (ec / _GAMMA_2_5) ** (-2.0 / 3.0)
-        cpdf = (2.0 * lam / (3.0 * c_13)) * math.exp(-lam * c_23)
-        phi = _INV_SQRT_2PI * math.exp(-0.5 * xi * xi)
-        return cpdf * phi
+    # lam(x) grows with x, so exp(-lam(x) * c**(2/3)) peaks at the LEFT edge of each integral
+    # and is exactly 0 at every quad node once lam(edge) * c**(2/3) exceeds ~745 (denominator:
+    # c > ~1.1e6 voxels at ADNI-sized V/Rd; numerator: much sooner).  The old guard then
+    # returned the marginal sf(h) ("no evidence") instead of ~0 ("maximal evidence").
+    # Factor exp(-lam(edge) * c**(2/3)) out of each integral and restore it in log space.
+    def _lam(xi: float) -> float:
+        ec = _expected_cluster_size_scalar(xi, log_V, log_Rd, clamp)
+        return (ec / _GAMMA_2_5) ** (-2.0 / 3.0)
 
-    upper = _UPPER_Z
-    numerator, _ = quad(integrand, h, upper, limit=200)
-    denominator, _ = quad(integrand, z_est_thr, upper, limit=200)
+    def _scaled_integral(lo: float) -> tuple[float, float]:
+        # integral of  lam * exp(-(lam - lam(lo)) c^(2/3) - (x^2 - lo^2)/2)  over [lo, upper]; the common
+        # factor  exp(-lam(lo) c^(2/3)) * phi(lo) * 2 / (3 c^(1/3))  is restored in log space below
+        lam_lo = _lam(lo)
 
-    if denominator < 1e-300:
-        return 0.5 * math.erfc(h * _INV_SQRT_2)
-    return float(max(min(numerator / denominator, 1.0), _SF_UPPER))
+        def integrand(xi: float) -> float:
+            lam = _lam(xi)
+            expo = -(lam - lam_lo) * c_23 - 0.5 * (xi * xi - lo * lo)
+            return lam * math.exp(min(expo, 700.0))
+
+        value, _ = quad(integrand, lo, _UPPER_Z, limit=200)
+        return value, lam_lo
+
+    numerator, lam_h = _scaled_integral(h)
+    denominator, lam_0 = _scaled_integral(z_est_thr)
+
+    if numerator <= 0.0 or denominator <= 0.0:  # still unresolvable (c >> V): saturate, never the marginal
+        return _SF_UPPER
+    log_p = (math.log(numerator) - math.log(denominator)
+             - (lam_h - lam_0) * c_23 - 0.5 * (h * h - z_est_thr * z_est_thr))
+    return float(min(max(math.exp(min(log_p, 0.0)), _SF_UPPER), 1.0))
 
 
 def aggregate_logpvals(s: float, delta: float) -> float:

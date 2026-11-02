@@ -68,6 +68,8 @@ def ptfce_etfce(
     logp_grid = np.linspace(0, logp_max, Nh)
     delta = logp_grid[1] - logp_grid[0] if Nh > 1 else logp_max
     h_grid = stats.norm.isf(np.exp(-logp_grid))
+    # The logsf/exp/isf round trip can overshoot by one ulp, excluding peaks.
+    h_grid[-1] = min(h_grid[-1], z_max)
     h_grid[0] = -1e10
 
     if verbose and progress_queue is None:
