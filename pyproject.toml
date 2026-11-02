@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=64", "wheel"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,7 +8,8 @@ version = "0.1.1"
 description = "Fast probabilistic Threshold-Free Cluster Enhancement in Python"
 readme = "README.md"
 requires-python = ">=3.12"
-license = {text = "MIT"}
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     {name = "Don Yin", email = "dy323@cam.ac.uk"},
     {name = "Hao Chen", email = "hc666@cam.ac.uk"},
@@ -17,15 +18,17 @@ keywords = ["neuroimaging", "TFCE", "pTFCE", "VBM", "statistics", "GRF"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: Medical Science Apps.",
 ]
 dependencies = [
-    "numpy",
-    "scipy",
-    "connected-components-3d",
+    # Python 3.12 wheel baselines; newer Pythons resolve compatible newer releases.
+    "numpy>=1.26.0",
+    "scipy>=1.11.2",
+    "connected-components-3d>=3.12.4",
 ]
 
 [project.optional-dependencies]
