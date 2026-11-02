@@ -44,3 +44,11 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 pytfce = ["*.R"]
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP", "BLE", "C4", "RUF"]
+# Scientific text intentionally uses Unicode mathematical notation.
+ignore = ["RUF001", "RUF002", "RUF003"]

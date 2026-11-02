@@ -115,7 +115,8 @@ def _fig01_spatial(results_dir: Path, plots_dir: Path) -> None:
             if ri >= 2:
                 ax.contour(gt[:, :, sl].T, levels=[0.5],
                            colors="lime", linewidths=0.8, linestyles="--")
-            ax.set_xticks([]); ax.set_yticks([])
+            ax.set_xticks([])
+            ax.set_yticks([])
             if ci == 0:
                 ax.set_ylabel(title, fontsize=7, fontweight="bold")
             if ri == 0:
@@ -138,27 +139,35 @@ def _fig02_method_progression(base, py_tfce, r_ptfce, r_tfce, plots_dir):
     if r_tfce and "detection" in r_tfce:
         det = r_tfce["detection"]
         methods.append("R TFCE\n(perm)")
-        tprs.append(det.get("tpr", 0)); dices.append(det.get("dice", 0))
-        times.append(r_tfce.get("elapsed_s", 0)); colors.append(COLORS["R_TFCE"])
+        tprs.append(det.get("tpr", 0))
+        dices.append(det.get("dice", 0))
+        times.append(r_tfce.get("elapsed_s", 0))
+        colors.append(COLORS["R_TFCE"])
 
     if r_ptfce and "detection" in r_ptfce:
         det = r_ptfce["detection"]
         methods.append("R pTFCE")
-        tprs.append(det.get("tpr", 0)); dices.append(det.get("dice", 0))
-        times.append(r_ptfce.get("elapsed_s", 0)); colors.append(COLORS["R_pTFCE"])
+        tprs.append(det.get("tpr", 0))
+        dices.append(det.get("dice", 0))
+        times.append(r_ptfce.get("elapsed_s", 0))
+        colors.append(COLORS["R_pTFCE"])
 
     if py_tfce and "TFCE_200p" in py_tfce:
         m = py_tfce["TFCE_200p"]
         methods.append("Py TFCE\n(200p)")
-        tprs.append(m.get("tpr", 0)); dices.append(m.get("dice", 0))
-        times.append(m.get("time_s", 0)); colors.append(COLORS["Py_TFCE"])
+        tprs.append(m.get("tpr", 0))
+        dices.append(m.get("dice", 0))
+        times.append(m.get("time_s", 0))
+        colors.append(COLORS["Py_TFCE"])
 
     mc = base.get("main_comparison", {}).get("methods", {})
     if "pTFCE_baseline" in mc:
         m = mc["pTFCE_baseline"]
         methods.append("Py pTFCE")
-        tprs.append(m.get("tpr", 0)); dices.append(m.get("dice", 0))
-        times.append(m.get("time_s", 0)); colors.append(COLORS["Py_pTFCE"])
+        tprs.append(m.get("tpr", 0))
+        dices.append(m.get("dice", 0))
+        times.append(m.get("time_s", 0))
+        colors.append(COLORS["Py_pTFCE"])
 
     if not methods:
         return
@@ -226,7 +235,7 @@ def _fig03_amplitude_ablation(base, plots_dir):
 
     for ax, metric in [(ax1, "TPR"), (ax2, "Dice")]:
         ax.set_xticks(x)
-        ax.set_xticklabels([f"a={l}" for l in amp_labels], fontsize=9)
+        ax.set_xticklabels([f"a={label}" for label in amp_labels], fontsize=9)
         ax.set_ylabel(metric, fontsize=10)
         ax.set_ylim(0, 1.1)
         ax.legend(frameon=False, fontsize=8)

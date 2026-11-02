@@ -8,13 +8,13 @@ Uses fork start method for macOS compatibility (avoids pickle issues).
 from __future__ import annotations
 
 import multiprocessing as mp
-import os
 import platform
 import signal
 import sys
-import time
 import traceback
-from typing import Any, Callable
+from collections.abc import Callable
+from queue import Empty
+from typing import Any
 
 if platform.system() == "Darwin":
     mp.set_start_method("fork", force=True)
@@ -36,9 +36,9 @@ def _worker(func: Callable, name: str, queue: mp.Queue,
             result_pipe, args: tuple) -> None:
     """Process target — runs *func*, sends lightweight status via pipe."""
     try:
-        result = func(queue, *args)
+        func(queue, *args)
         result_pipe.send(("ok", name))
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - report arbitrary experiment failures to the parent.
         traceback.print_exc()
         result_pipe.send(("error", str(exc)))
     finally:
@@ -114,7 +114,7 @@ class ParallelRunner:
                 while alive:
                     try:
                         msg = queue.get(timeout=0.25)
-                    except Exception:
+                    except Empty:
                         msg = None
 
                     if msg and isinstance(msg, dict):

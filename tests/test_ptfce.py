@@ -4,16 +4,14 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from numpy.testing import assert_allclose
-from scipy import stats
 
 from pytfce import ptfce_baseline, ptfce_exact
 
 EXPECTED_KEYS = {"p", "logp", "Z_enhanced", "smoothness", "fwer_z_thresh", "diagnostics"}
 
 # Shared kwargs to keep runs fast
-_FAST = dict(Nh=30, lut_density=30, verbose=False)
-_FAST_EXACT = dict(max_thresholds=60, lut_density=30, verbose=False)
+_FAST = {"Nh": 30, "lut_density": 30, "verbose": False}
+_FAST_EXACT = {"max_thresholds": 60, "lut_density": 30, "verbose": False}
 
 
 # ── ptfce_baseline ─────────────────────────────────────────────────

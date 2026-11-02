@@ -26,9 +26,8 @@ import numpy as np
 from scipy import ndimage, stats
 from scipy.interpolate import RegularGridInterpolator
 
-from .grf import pvox_clust, aggregate_logpvals_vec
+from .grf import aggregate_logpvals_vec, pvox_clust
 from .smoothness import estimate_smoothness, fwer_z_threshold
-
 
 # ---------------------------------------------------------------------------
 # progress bar (no tqdm dependency)

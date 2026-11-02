@@ -4,11 +4,9 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from numpy.testing import assert_allclose
 from scipy import ndimage
 
 from pytfce import estimate_smoothness, fwer_z_threshold
-
 
 # ── estimate_smoothness ───────────────────────────────────────────
 

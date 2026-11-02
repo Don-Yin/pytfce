@@ -28,13 +28,3 @@ def compare_methods(results: dict[str, np.ndarray],
     """Compare multiple methods.  *results* maps method name to detection mask."""
     return {name: detection_metrics(det, ground_truth, brain_mask)
             for name, det in results.items()}
-
-
-def soft_dice_torch(pred: "torch.Tensor", target: "torch.Tensor",
-                    eps: float = 1e-7) -> "torch.Tensor":
-    """Differentiable soft Dice for torch tensors (higher is better)."""
-    import torch
-    pred = pred.float()
-    target = target.float()
-    intersection = (pred * target).sum()
-    return (2.0 * intersection + eps) / (pred.sum() + target.sum() + eps)

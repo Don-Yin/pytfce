@@ -98,7 +98,6 @@ def ptfce_etfce(
     active = np.zeros(N, dtype=bool)
 
     sx, sy, sz = Z.shape
-    strides = np.array([sy * sz, sz, 1], dtype=np.intp)
 
     offsets_3d = np.array([
         [1, 0, 0], [-1, 0, 0],

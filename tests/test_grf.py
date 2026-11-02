@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import math
-
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
@@ -16,7 +14,6 @@ from pytfce.core.grf import (
     expected_cluster_size,
     pvox_clust,
 )
-
 
 # ── expected_cluster_size ──────────────────────────────────────────
 
