@@ -15,21 +15,31 @@ Please open a GitHub issue for:
 ```bash
 git clone https://github.com/Don-Yin/pytfce.git
 cd pytfce
-pip install -e ".[all]"
-pip install pytest
+python -m pip install -e ".[all,test]"
+python -m pip install ruff
 ```
 
-## Running tests
+## Running checks
+
+Run Ruff from the repository root using the configuration in `pyproject.toml`:
 
 ```bash
-pytest tests/ -v
+python -m ruff check src/ tests/
 ```
+
+Run the test suite against the editable source install:
+
+```bash
+python -m pytest tests/ -q -p no:cacheprovider
+```
+
+If the package is not installed in editable mode, prefix the test command with `PYTHONPATH=src`.
 
 ## Submitting changes
 
 1. Fork the repository and create a feature branch from `main`.
 2. Add tests for any new functionality.
-3. Ensure all tests pass (`pytest tests/ -v`).
+3. Ensure the Ruff lint check and test suite above both pass.
 4. Open a pull request with a clear description of the change.
 
 ## Code style
