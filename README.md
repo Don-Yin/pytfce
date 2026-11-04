@@ -8,47 +8,22 @@ How pTFCE works, from p-values to the package (10 min, CC BY-SA 4.0; [download](
 
 ## Overview
 
-`pytfce` is a pure-Python package for probabilistic TFCE (pTFCE) that provides analytical inference on neuroimaging statistical maps without permutation testing. It implements a baseline pTFCE faithful to the original R package (Spisák et al. 2019) and a hybrid eTFCE–GRF that combines union-find cluster retrieval with analytical GRF p-values. On whole-brain VBM, the baseline runs in about 5 s, 75× faster than R pTFCE ([arXiv:2603.11344](https://arxiv.org/abs/2603.11344)); see [Validation](#validation).
-
-## Installation
-
-```bash
-pip install pytfce
-
-# development install
-git clone https://github.com/Don-Yin/pytfce.git
-cd pytfce
-pip install -e .
-```
-
-**Dependencies:** NumPy, SciPy, connected-components-3d (installed automatically).
+Analytical pTFCE inference on neuroimaging statistical maps, without permutations: a baseline faithful to R pTFCE (Spisák et al. 2019) and a hybrid eTFCE–GRF. Whole-brain VBM takes about 5 s, 75× faster than R pTFCE ([arXiv:2603.11344](https://arxiv.org/abs/2603.11344)); see [Validation](#validation).
 
 ## Quick start
 
-The NIfTI example below requires **NiBabel** (`pip install nibabel`). It is an optional I/O dependency; the core array-based API does not require it.
+```bash
+pip install pytfce
+```
 
 ```python
-import nibabel as nib
-from pytfce import ptfce_baseline, ptfce_exact
+from pytfce import ptfce_baseline
 
-img = nib.load("zstat1.nii.gz")
-Z = img.get_fdata()
-mask = Z != 0  # or load a proper brain mask
-
-# --- baseline pTFCE (fast, matches R pTFCE) ---
-result = ptfce_baseline(Z, mask)
-
-# --- hybrid eTFCE–GRF (exact cluster retrieval) ---
-result = ptfce_exact(Z, mask)
-
-# result keys:
-#   result["p"]           — enhanced p-values (3-D array)
-#   result["logp"]          — −ln(p), natural log; use logp / ln(10) for −log10(p)
-#   result["Z_enhanced"]    — enhanced Z-scores
-#   result["fwer_z_thresh"] — GRF FWER Z-threshold for the enhanced map
-#   result["smoothness"]    — estimated smoothness dict
-#   result["diagnostics"]   — timings and run settings
+result = ptfce_baseline(Z, mask)  # Z: 3-D Z-map, mask: boolean brain mask
+result["p"], result["Z_enhanced"], result["fwer_z_thresh"]
 ```
+
+Loading NIfTI, every result key and the hybrid variant: [docs/usage.md](https://github.com/Don-Yin/pytfce/blob/main/docs/usage.md).
 
 ## Variants
 
