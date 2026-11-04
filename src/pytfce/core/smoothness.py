@@ -30,120 +30,159 @@ def estimate_smoothness(Z: np.ndarray, mask: np.ndarray) -> dict:
     Returns a dict with V, Rd, dLh, fwhm_voxels, resel_size, n_resels.
     """
     mask = mask.astype(bool)
-    V = int(mask.sum())
+    core = _core(mask)
+    ss, s2 = _pair_moments(np.asarray(Z, dtype=np.float64), core)
+    return _smoothness(int(mask.sum()), ss, s2, max(int(core.sum()), 1))
 
-    # Scale-invariant lag-1 autocorrelation exactly as FSL / R pTFCE smoothest(): voxel
-    # pairs (centre, backward neighbour) over the "core" where the centre and all three
-    # backward neighbours lie inside the mask.
-    Z = np.asarray(Z, dtype=np.float64)
-    core = (mask[1:, 1:, 1:] & mask[:-1, 1:, 1:]
-            & mask[1:, :-1, 1:] & mask[1:, 1:, :-1])
-    n_core = max(int(core.sum()), 1)
-    centre = Z[1:, 1:, 1:]
-    neighbours = (Z[:-1, 1:, 1:], Z[1:, :-1, 1:], Z[1:, 1:, :-1])
-    ss = np.zeros(3, dtype=np.float64)  # sum z_a * z_b
-    s2 = np.zeros(3, dtype=np.float64)  # sum (z_a^2 + z_b^2) / 2
-    for axis, nb in enumerate(neighbours):
-        ss[axis] = float((centre * nb)[core].sum())
-        s2[axis] = float((0.5 * (centre * centre + nb * nb))[core].sum())
-    var_deriv = 2.0 * (s2 - ss) / n_core
-    mean_sq = np.maximum(s2 / n_core, 1e-300)
 
+def _core(mask: np.ndarray) -> np.ndarray:
+    """Voxels whose three backward neighbours also lie in *mask* (FSL / R pTFCE smoothest),
+    indexed as ``field[1:, 1:, 1:]``; every axis uses this one core."""
+    return mask[1:, 1:, 1:] & mask[:-1, 1:, 1:] & mask[1:, :-1, 1:] & mask[1:, 1:, :-1]
+
+
+def _pair_moments(field: np.ndarray, core: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Per axis, ``SS = sum(z_a * z_b)`` and ``S2 = sum((z_a**2 + z_b**2) / 2)`` over the core's
+    (centre, backward neighbour) pairs."""
+    centre = field[1:, 1:, 1:]
+    neighbours = (field[:-1, 1:, 1:], field[1:, :-1, 1:], field[1:, 1:, :-1])
+    ss = np.array([float((centre * nb)[core].sum()) for nb in neighbours])
+    s2 = np.array(
+        [float((0.5 * (centre * centre + nb * nb))[core].sum()) for nb in neighbours]
+    )
+    return ss, s2
+
+
+def _smoothness(
+    V: int, ss: np.ndarray, s2: np.ndarray, n_pairs: int, dof_factor: float = 1.0
+) -> dict:
+    """The smoothness dict from pooled pair moments (``corr_i = SS_i / S2_i``, scale-invariant)."""
+    var_deriv = 2.0 * (s2 - ss) / n_pairs
+    mean_sq = np.maximum(s2 / n_pairs, 1e-300)
     dLh, fwhm_per_axis = _var_deriv_to_smoothness(var_deriv, mean_sq)
-
-    Rd = V * dLh
+    dLh *= dof_factor
     resel_size = float(np.prod(fwhm_per_axis))
-    n_resels = V / max(resel_size, 1e-10)
-
     return {
         "V": V,
-        "Rd": float(Rd),
+        "Rd": float(V * dLh),
         "dLh": float(dLh),
         "var_deriv": var_deriv.tolist(),
         "fwhm_voxels": fwhm_per_axis.tolist(),
         "resel_size": resel_size,
-        "n_resels": n_resels,
+        "n_resels": V / max(resel_size, 1e-10),
     }
+
+
+# FSL smoothest's temporal-DOF correction of dLh for residual input (fsl-cluster smoothest.cc,
+# SMOOTHEST::Interpolate): squared factors by degrees of freedom.
+_FSL_DOF_LUT = {
+    5: 1.5423138,
+    6: 1.3757105,
+    7: 1.2842680,
+    8: 1.2272151,
+    9: 1.1885232,
+    10: 1.1606988,
+    11: 1.1398000,
+    12: 1.1235677,
+    13: 1.1106196,
+    14: 1.1000651,
+    15: 1.0913060,
+    16: 1.0839261,
+    17: 1.0776276,
+    18: 1.0721920,
+    19: 1.0674553,
+    20: 1.0632924,
+    25: 1.0483053,
+    30: 1.0390117,
+    40: 1.0281339,
+    50: 1.0219834,
+    60: 1.0180339,
+    70: 1.0152850,
+    80: 1.0132621,
+    90: 1.0117115,
+    100: 1.0104851,
+    150: 1.0068808,
+    200: 1.0051200,
+    300: 1.0033865,
+    500: 1.0020191,
+}
+
+
+def _fsl_dof_factor(v: float) -> float:
+    """FSL's dLh multiplier for *v* residual degrees of freedom, reproduced as FSL computes it:
+    from the first table key >= int(v) and the key below it, the line through them is evaluated
+    at *v* but offset from the upper key's value (``... * (v - lower) + upper``), as in smoothest.cc."""
+    if v < 6:
+        return 1.1  # FSL's own constant below 6 dof, applied without the square root
+    keys = sorted(_FSL_DOF_LUT)
+    upper = next((k for k in keys if k >= int(v)), None)
+    if upper is None:
+        squared = 1.0321 / v + 1
+    else:
+        lower = keys[keys.index(upper) - 1]
+        slope = (_FSL_DOF_LUT[upper] - _FSL_DOF_LUT[lower]) / (upper - lower)
+        squared = slope * (v - lower) + _FSL_DOF_LUT[upper]
+    return math.sqrt(squared)
 
 
 def estimate_smoothness_from_residuals(
     Y: np.ndarray,
     X: np.ndarray,
     mask: np.ndarray,
-    n_sample: int = 20,
+    n_sample: int | None = None,
 ) -> dict:
     """Estimate image smoothness from GLM residuals (preferred over Z-map).
 
     Standard neuroimaging practice (FSL smoothest, SPM):  estimate spatial
-    smoothness from the MSE-normalised residuals rather than the stat map.
+    smoothness from the standardised residuals rather than the stat map.
     This avoids the signal contamination that biases Z-map-based estimates
     — especially severe for spatially rough effects (scanner, site).
+
+    Matches FSL ``smoothest -r res4d -d dof``: each voxel's residuals are centred and
+    divided by their sample SD, the pair moments of all residuals are pooled over one
+    common core (so the field's overall scale cancels), and dLh takes FSL's temporal-DOF
+    correction for ``dof = n - rank(X)``.  FWHM and n_resels carry no DOF correction,
+    as in FSL.  (Before 0.1.3 the residuals were scaled by ``sqrt(SSE/dof)``, whose mean
+    square is ``dof/n``, and converted as if it were 1: n_resels came out ~7% low.)
 
     Parameters
     ----------
     Y : (n_subjects, V_masked)  flattened observations inside the brain mask.
     X : (n_subjects, p)  design matrix.
     mask : 3-D boolean brain mask.
-    n_sample : number of subject residuals to average over (≤ n_subjects).
+    n_sample : use only the first *n_sample* residuals (default: all, as FSL does).
 
     Returns dict with the same keys as :func:`estimate_smoothness`.
     """
-    n, p = X.shape
-    df_resid = n - p
-    spatial = mask.shape
-    mask_flat = mask.ravel().astype(bool)
+    n = X.shape[0]
+    dof = n - int(np.linalg.matrix_rank(X))
+    mask = mask.astype(bool)
+    mask_flat = mask.ravel()
 
-    XtX_inv = np.linalg.pinv(X.T @ X)
-    beta = XtX_inv @ (X.T @ Y)
+    resid = Y - X @ (np.linalg.pinv(X.T @ X) @ (X.T @ Y))
+    resid = resid - resid.mean(axis=0)
+    sd = resid.std(axis=0, ddof=1)
+    valid = np.zeros(mask.size, dtype=bool)
+    valid[mask_flat] = sd > 0  # FSL drops voxels without variance from the pairs
+    core = _core(valid.reshape(mask.shape))
+    resid[:, sd > 0] /= sd[sd > 0]
 
-    # MSE per voxel (pool across all subjects)
-    predicted = X @ beta
-    ssq_resid = np.einsum("ij,ij->j", Y - predicted, Y - predicted)
-    del predicted
-    mse = ssq_resid / max(df_resid, 1)
-    del ssq_resid
-    inv_sqrt_mse = 1.0 / np.sqrt(np.clip(mse, 1e-10, None))
-
-    # Accumulate first-difference variance over a sample of normalised residuals
-    n_use = min(n_sample, n)
-    ssq = np.zeros(3, dtype=np.float64)
-    counts = np.zeros(3, dtype=np.int64)
-
+    n_use = n if n_sample is None else min(n_sample, n)
+    ss, s2 = np.zeros(3), np.zeros(3)
+    field = np.zeros(mask.size, dtype=np.float64)
     for i in range(n_use):
-        r_norm = (Y[i] - X[i] @ beta) * inv_sqrt_mse
-        r_3d = np.zeros(int(np.prod(spatial)), dtype=np.float64)
-        r_3d[mask_flat] = r_norm
-        r_3d = r_3d.reshape(spatial)
-
-        for axis in range(3):
-            sa = [slice(None)] * 3
-            sb = [slice(None)] * 3
-            sa[axis] = slice(1, None)
-            sb[axis] = slice(None, -1)
-            mb = mask[tuple(sa)] & mask[tuple(sb)]
-            diff = r_3d[tuple(sa)] - r_3d[tuple(sb)]
-            ssq[axis] += float((diff[mb] ** 2).sum())
-            counts[axis] += int(mb.sum())
-
-    var_deriv = ssq / np.maximum(counts, 1)
-
-    V = int(mask.sum())
-    dLh, fwhm_per_axis = _var_deriv_to_smoothness(var_deriv)
-    Rd = V * dLh
-    resel_size = float(np.prod(fwhm_per_axis))
-    n_resels = V / max(resel_size, 1e-10)
-
-    return {
-        "V": V,
-        "Rd": float(Rd),
-        "dLh": float(dLh),
-        "var_deriv": var_deriv.tolist(),
-        "fwhm_voxels": fwhm_per_axis.tolist(),
-        "resel_size": resel_size,
-        "n_resels": n_resels,
-        "source": "residuals",
-        "n_sample": n_use,
-    }
+        field[mask_flat] = resid[i]
+        a, b = _pair_moments(field.reshape(mask.shape), core)
+        ss += a
+        s2 += b
+    info = _smoothness(
+        int(mask.sum()),
+        ss,
+        s2,
+        max(int(core.sum()), 1) * n_use,
+        dof_factor=_fsl_dof_factor(dof) if n_use > 1 else 1.0,
+    )
+    return {**info, "source": "residuals", "n_sample": n_use}
 
 
 def _var_deriv_to_smoothness(
@@ -192,6 +231,10 @@ def fwer_z_threshold(n_resels: float, alpha: float = 0.05) -> float:
         return (z * z - 1.0) * math.exp(-0.5 * z * z) - target
 
     try:
-        return float(optimize.brentq(_ec_residual, math.sqrt(3.0), 38.0))
+        return float(
+            optimize.root_scalar(
+                _ec_residual, bracket=(math.sqrt(3.0), 38.0), method="brentq"
+            ).root
+        )
     except ValueError:
         return float(stats.norm.isf(alpha / R3))

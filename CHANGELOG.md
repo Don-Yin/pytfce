@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Redraw the README figures with 0.1.2: a weak-signal phantom where Bonferroni
+  misses most of the signal, and re-measured runtimes.
+- `estimate_smoothness_from_residuals` uses all residuals by default
+  (`n_sample=None`), as FSL does; the first 20 depended on row order.
+
+### Fixed
+
+- `estimate_smoothness_from_residuals` now matches FSL `smoothest -r -d`. Residuals
+  scaled by `sqrt(SSE/dof)` have mean square `dof/n` and were converted as if it
+  were 1, so FWHM came out too large and `n_resels` too small (about 7% at n=40,
+  more for small samples). The FWER threshold was therefore slightly lenient. Residuals are
+  now standardised per voxel, pair moments are pooled over one common core, and
+  `dLh` takes FSL's temporal-DOF correction. Results that pass FSL smoothness
+  through `smooth_info` were never affected.
+
 ## [0.1.2] - 2026-11-02
 
 ### Added

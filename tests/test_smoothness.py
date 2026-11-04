@@ -6,7 +6,11 @@ import numpy as np
 import pytest
 from scipy import ndimage
 
-from pytfce import estimate_smoothness, fwer_z_threshold
+from pytfce import (
+    estimate_smoothness,
+    estimate_smoothness_from_residuals,
+    fwer_z_threshold,
+)
 
 # ── estimate_smoothness ───────────────────────────────────────────
 
@@ -75,6 +79,31 @@ class TestEstimateSmoothness:
             ndimage.gaussian_filter(base, sigma=3.0), mask)
 
         assert np.mean(info_high["fwhm_voxels"]) > np.mean(info_low["fwhm_voxels"])
+
+
+def test_residual_smoothness_matches_fsl_smoothest():
+    """Seeded GLM residuals against native FSL 6.0.7 ``smoothest -r res4d -m mask -d 9``.
+
+    The reference ran on these residuals saved as float32 NIfTI with a radiological affine
+    (FSL reads neurological images x-flipped, which changes the boundary pairs).  The former
+    estimator assumed unit mean square for ``sqrt(SSE/dof)``-scaled residuals and gave
+    FWHM ~3.86 and dLh 0.0776 here.
+    """
+    rng = np.random.default_rng(7)
+    shape, n = (24, 24, 24), 12
+    mask = np.zeros(shape, dtype=bool)
+    mask[3:-3, 3:-3, 3:-3] = True
+    mask[3:8, 3:8, 3:8] = False
+    vols = np.stack([ndimage.gaussian_filter(rng.standard_normal(shape), 1.5) for _ in range(n)])
+    X = np.column_stack([np.ones(n), np.r_[np.ones(n // 2), -np.ones(n // 2)], rng.standard_normal(n)])
+    vols += 0.3 * X[:, 1, None, None, None] * (rng.standard_normal(shape) > 0)
+
+    info = estimate_smoothness_from_residuals(vols[:, mask], X, mask)
+
+    assert info["V"] == 5707
+    np.testing.assert_allclose(info["fwhm_voxels"], [3.30731, 3.29647, 3.45019], rtol=2e-6)
+    np.testing.assert_allclose(info["resel_size"], 37.6156, rtol=2e-6)
+    np.testing.assert_allclose(info["dLh"], 0.131607, rtol=5e-6)  # includes FSL's dof correction
 
 
 # ── fwer_z_threshold ──────────────────────────────────────────────

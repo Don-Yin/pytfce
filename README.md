@@ -57,13 +57,13 @@ Both variants use identical GRF p-values and aggregation. The baseline sweeps a 
 
 ## Validation
 
-**Spatial detection.** Phantom study (64³ volume, 80 subjects, 3 embedded blobs). All pTFCE variants achieve Dice = 1.0:
+**Spatial detection.** Weak-signal phantom (64³ volume, 80 subjects, three embedded blobs), every method thresholded at FWER 0.05. Both pTFCE variants recover most of the signal that Bonferroni misses, with no false positives; Dice is computed over the whole volume, the panels show the slice through the blob centres:
 
-![Spatial detection](https://raw.githubusercontent.com/Don-Yin/pytfce/main/docs/figures/fig-spatial-detection.png)
+![Spatial detection](https://raw.githubusercontent.com/Don-Yin/pytfce/main/docs/figures/fig-detection.png)
 
-**Runtime.** On whole-brain VBM (UK Biobank and IXI), the baseline takes about 5 s (75× faster than R pTFCE) and the hybrid about 85 s (4.6× faster); both are over 1000× faster than permutation TFCE ([arXiv:2603.11344](https://arxiv.org/abs/2603.11344)). On the emulated phantom below, the baseline takes 0.34 s against 21.7 s for R pTFCE. Timings depend on the dataset, settings, and hardware.
+**Runtime.** On whole-brain VBM (UK Biobank and IXI), the baseline takes about 5 s (75× faster than R pTFCE) and the hybrid about 85 s (4.6× faster); both are over 1000× faster than permutation TFCE ([arXiv:2603.11344](https://arxiv.org/abs/2603.11344)). On a 64³ phantom (pytfce 0.1.2, Apple M4 Max), `ptfce_baseline` takes 0.20 s and `ptfce_exact` 0.69 s, against 10 s for R pTFCE and 74 s for FSL TFCE with 5,000 permutations. Timings depend on the dataset, settings, and hardware.
 
-![Runtime comparison](https://raw.githubusercontent.com/Don-Yin/pytfce/main/docs/figures/fig-runtime-log.png)
+![Runtime comparison](https://raw.githubusercontent.com/Don-Yin/pytfce/main/docs/figures/fig-runtime.png)
 
 ## API reference
 
