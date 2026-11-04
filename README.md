@@ -2,11 +2,13 @@
 
 Fast probabilistic Threshold-Free Cluster Enhancement in Python.
 
+https://github.com/user-attachments/assets/c237f791-de9b-4d04-9f51-82abb3eb1e05
+
+How pTFCE works, from p-values to the package (10 min, CC BY-SA 4.0; [download](https://github.com/Don-Yin/pytfce/releases/download/v0.1.2/pytfce-how-it-works.mp4)).
+
 ## Overview
 
 `pytfce` is a pure-Python package for probabilistic TFCE (pTFCE) that provides analytical inference on neuroimaging statistical maps without permutation testing. It implements a baseline pTFCE faithful to the original R package (Spisák et al. 2019) and a hybrid eTFCE–GRF that combines union-find cluster retrieval with analytical GRF p-values. On whole-brain VBM, the baseline runs in about 5 s, 75× faster than R pTFCE ([arXiv:2603.11344](https://arxiv.org/abs/2603.11344)); see [Validation](#validation).
-
-A 10-minute video explains how pTFCE works, from p-values to the package: [pytfce-how-it-works.mp4](https://github.com/Don-Yin/pytfce/releases/download/v0.1.2/pytfce-how-it-works.mp4) (CC BY-SA 4.0).
 
 ## Installation
 
