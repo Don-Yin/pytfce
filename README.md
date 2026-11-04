@@ -1,14 +1,12 @@
 # pytfce
 
-Fast probabilistic Threshold-Free Cluster Enhancement in Python.
+Fast probabilistic Threshold-Free Cluster Enhancement in Python: analytical p-values for neuroimaging maps, without permutations.
 
 https://github.com/user-attachments/assets/c237f791-de9b-4d04-9f51-82abb3eb1e05
 
 How pTFCE works, from p-values to the package (10 min, CC BY-SA 4.0; [download](https://github.com/Don-Yin/pytfce/releases/download/v0.1.2/pytfce-how-it-works.mp4)).
 
-## Overview
-
-Analytical pTFCE inference on neuroimaging statistical maps, without permutations: a baseline faithful to R pTFCE (Spisák et al. 2019) and a hybrid eTFCE–GRF. Whole-brain VBM takes about 5 s, 75× faster than R pTFCE ([arXiv:2603.11344](https://arxiv.org/abs/2603.11344)); see [Validation](#validation).
+**Docs:** [Usage](https://github.com/Don-Yin/pytfce/blob/main/docs/usage.md) · [API reference](https://github.com/Don-Yin/pytfce/blob/main/docs/api.md) · [Variants](#variants) · [Validation](#validation) · [Paper](https://arxiv.org/abs/2603.11344)
 
 ## Quick start
 
@@ -23,13 +21,13 @@ result = ptfce_baseline(Z, mask)  # Z: 3-D Z-map, mask: boolean brain mask
 result["p"], result["Z_enhanced"], result["fwer_z_thresh"]
 ```
 
-Loading NIfTI, every result key and the hybrid variant: [docs/usage.md](https://github.com/Don-Yin/pytfce/blob/main/docs/usage.md).
+Loading NIfTI and smoothness from residuals: [Usage](https://github.com/Don-Yin/pytfce/blob/main/docs/usage.md). Every parameter and result key: [API reference](https://github.com/Don-Yin/pytfce/blob/main/docs/api.md).
 
 ## Variants
 
 | Variant | Method | Runtime (whole-brain VBM) | Best for |
 |---------|--------|---------------:|----------|
-| `ptfce_baseline` | pTFCE (threshold grid + CCL) | ~5 s | Standard use, small–medium volumes |
+| `ptfce_baseline` | pTFCE (Spisák et al. 2019): threshold grid + CCL | ~5 s | Standard use, small–medium volumes |
 | `ptfce_exact` | eTFCE–GRF (union-find + GRF) | ~85 s | Large volumes, finer threshold grids |
 
 Both variants use identical GRF p-values and aggregation. The baseline sweeps a threshold grid with connected-component labelling at each level; the hybrid uses a single union-find sweep, which eliminates discretisation error at higher constant computational cost.
@@ -43,18 +41,6 @@ Both variants use identical GRF p-values and aggregation. The baseline sweeps a 
 **Runtime.** On whole-brain VBM (UK Biobank and IXI), the baseline takes about 5 s (75× faster than R pTFCE) and the hybrid about 85 s (4.6× faster); both are over 1000× faster than permutation TFCE ([arXiv:2603.11344](https://arxiv.org/abs/2603.11344)). On a 64³ phantom (pytfce 0.1.2, Apple M4 Max), `ptfce_baseline` takes 0.20 s and `ptfce_exact` 0.69 s, against 10 s for R pTFCE and 74 s for FSL TFCE with 5,000 permutations. Timings depend on the dataset, settings, and hardware.
 
 ![Runtime comparison](https://raw.githubusercontent.com/Don-Yin/pytfce/main/docs/figures/fig-runtime.png)
-
-## API reference
-
-| Function | Description |
-|----------|-------------|
-| `ptfce_baseline(Z, mask, ...)` | Baseline pTFCE with LUT-accelerated GRF p-values |
-| `ptfce_exact(Z, mask, ...)` | Hybrid eTFCE–GRF via union-find + analytical GRF |
-| `estimate_smoothness(Z, mask)` | Estimate image smoothness (FWHM) from a Z-score map |
-| `estimate_smoothness_from_residuals(Y, X, mask)` | Estimate smoothness from GLM residuals |
-| `fwer_z_threshold(n_resels, alpha)` | GRF Euler-characteristic FWER Z-threshold |
-| `pvox_clust(V, Rd, c, h)` | P(Z ≥ h \| cluster_size = c) via GRF Bayes' rule |
-| `aggregate_logpvals_vec(s, delta)` | Vectorised Q-function for log-probability aggregation |
 
 ## Citation
 

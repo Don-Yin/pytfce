@@ -24,15 +24,16 @@ result = ptfce_baseline(Z, mask)  # fast, matches R pTFCE
 result = ptfce_exact(Z, mask)     # hybrid eTFCE–GRF, exact cluster retrieval
 ```
 
-To choose between them, see [Variants](../README.md#variants).
+To choose between them, see [Variants](../README.md#variants). Every parameter and result key is in the [API reference](api.md).
 
-## Result
+## Smoothness from residuals
 
-| Key | Contents |
-|-----|----------|
-| `p` | enhanced p-values (3-D array) |
-| `logp` | −ln(p), natural log; divide by ln(10) for −log10(p) |
-| `Z_enhanced` | enhanced Z-scores |
-| `fwer_z_thresh` | GRF FWER Z-threshold for the enhanced map |
-| `smoothness` | estimated smoothness dict |
-| `diagnostics` | timings and run settings |
+A Z-map's own smoothness is inflated by its signal. With the GLM at hand, estimate it from the residuals instead:
+
+```python
+from pytfce import estimate_smoothness_from_residuals
+
+Y = data[mask].T  # data: (X, Y, Z, n_subjects) -> (n_subjects, n_voxels)
+smooth = estimate_smoothness_from_residuals(Y, design, mask)
+result = ptfce_baseline(Z, mask, smooth_override=smooth)
+```
