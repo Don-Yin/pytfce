@@ -15,7 +15,7 @@ Please open a GitHub issue for:
 ```bash
 git clone https://github.com/Don-Yin/pytfce.git
 cd pytfce
-python -m pip install -e ".[all,test]"
+python -m pip install -e ".[all,test,accelerated]"
 python -m pip install ruff
 ```
 
@@ -33,7 +33,7 @@ Run the test suite against the editable source install:
 python -m pytest tests/ -q -p no:cacheprovider
 ```
 
-If the package is not installed in editable mode, prefix the test command with `PYTHONPATH=src`.
+Omit `accelerated` to test the base installation without Numba; only the tests that need compiled kernels will skip. If the package is not installed in editable mode, prefix the test command with `PYTHONPATH=src`.
 
 ## Submitting changes
 

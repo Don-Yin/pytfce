@@ -2,8 +2,8 @@ cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 title: "pytfce: Fast Probabilistic Threshold-Free Cluster Enhancement in Python"
 type: software
-version: 0.1.2
-date-released: 2026-11-02
+version: 0.1.3
+date-released: 2026-11-19
 license: MIT
 url: https://github.com/Don-Yin/pytfce
 repository-code: https://github.com/Don-Yin/pytfce
@@ -18,6 +18,20 @@ authors:
     orcid: https://orcid.org/0009-0009-5281-4616
     email: hc666@cam.ac.uk
     affiliation: University of Cambridge
+references:
+  - type: unpublished
+    title: "Hybrid eTFCE–GRF: Exact Cluster-Size Retrieval with Analytical p-Values for Voxel-Based Morphometry"
+    authors:
+      - family-names: Yin
+        given-names: Don
+      - family-names: Chen
+        given-names: Hao
+      - family-names: Miki
+        given-names: Takeshi
+      - family-names: Yang
+        given-names: Enyu
+    year: 2026
+    url: https://arxiv.org/abs/2603.11344
 keywords:
   - neuroimaging
   - TFCE

@@ -1,18 +1,10 @@
 """Hybrid eTFCE–GRF: union-find cluster retrieval + analytical GRF p-values.
 
-Our contribution — combines:
-  - eTFCE's union-find (Chen & Nichols 2026) for O(1) incremental
-    cluster retrieval (single sweep, no repeated CCL)
-  - pTFCE's analytical GRF p-values (Spisák et al. 2019; no permutations)
-  - Dense equi-spaced threshold grid (Nh=500 by default, 5x finer than
-    standard pTFCE) at minimal extra cost thanks to union-find
-
-Not to be confused with eTFCE itself, which still requires permutation
-testing for inference.
-
-Note: the grid remains equi-spaced on the -log(p) scale (required by
-the Q-function aggregation). The union-find simply makes denser grids
-affordable.
+The union-find sweep of eTFCE (Chen & Nichols 2026) retrieves cluster sizes
+at each sampled threshold without relabelling the map. Unlike eTFCE's
+permutation inference, pTFCE (Spisák et al. 2019) supplies the analytical
+probabilities. Its Q-function integrates on a discrete, equi-spaced -log(p)
+grid; exact cluster sizes do not remove threshold integration error.
 """
 
 from __future__ import annotations
@@ -40,6 +32,7 @@ def ptfce_exact(
     verbose: bool = True,
     progress_queue=None,
     smooth_override: dict | None = None,
+    uf_backend: str = "python",
 ) -> dict:
     """Run hybrid eTFCE–GRF: union-find clusters + analytical GRF p-values.
 
@@ -47,12 +40,19 @@ def ptfce_exact(
     ----------
     max_thresholds : int
         Number of equi-spaced thresholds on the -log(p) scale.
-        Default 500 (5x finer than standard pTFCE's 100).
-        Union-find makes denser grids cheap.
+        Default 500 (five times standard pTFCE's 100 thresholds).
     smooth_override : dict or None
         Pre-computed smoothness dict (from residuals).  When provided,
         skips the Z-map-based smoothness estimation.
+    uf_backend : {"python", "numba", "auto"}
+        Union-find execution backend. The default preserves the existing
+        Python implementation. ``numba`` requires the optional ``accelerated``
+        extra; ``auto`` falls back to Python only when Numba is not installed.
+        The first compiled call includes JIT/cache-load overhead. GRF, LUT,
+        grid and aggregation arithmetic are unchanged.
     """
+    if uf_backend not in ("python", "numba", "auto"):
+        raise ValueError("uf_backend must be 'python', 'numba', or 'auto'")
     Z = np.asarray(Z, dtype=np.float64)
     mask = np.asarray(mask, dtype=bool)
     Z_clean = np.where(np.isfinite(Z) & mask, Z, 0.0)
@@ -78,10 +78,19 @@ def ptfce_exact(
                                verbose=verbose and progress_queue is None)
     t_lut = time.perf_counter() - t0_total
 
+    compiled = None
+    if uf_backend != "python":
+        try:
+            from . import _union_find_numba as compiled
+        except ModuleNotFoundError as exc:
+            if exc.name != "numba":
+                raise
+            if uf_backend == "numba":
+                raise ImportError(
+                    "uf_backend='numba' requires pytfce[accelerated]"
+                ) from exc
+
     # ── Build DENSE equi-spaced threshold grid ─────────────────────
-    # Key: use the same equi-spaced -log(p) grid as standard pTFCE,
-    # but with many more points (Nh=500). The union-find makes this
-    # cheap: no repeated CCL, just incremental merges.
     flat_Z = Z_clean.ravel()
     pos_mask = (flat_Z > 0) & mask.ravel()
     pos_indices = np.flatnonzero(pos_mask)
@@ -95,7 +104,7 @@ def ptfce_exact(
 
     logp_max = -stats.norm.logsf(z_max)
     logp_grid = np.linspace(0, logp_max, Nh)
-    delta = logp_grid[1] - logp_grid[0] if Nh > 1 else logp_max
+    delta = float(logp_grid[1] - logp_grid[0] if Nh > 1 else logp_max)
     h_grid = stats.norm.isf(np.exp(-logp_grid))
     # The logsf/exp/isf round trip can overshoot by one ulp, excluding peaks.
     h_grid[-1] = min(h_grid[-1], z_max)
@@ -117,6 +126,13 @@ def ptfce_exact(
     uf_rank = np.zeros(N, dtype=np.intp)
     uf_size = np.ones(N, dtype=np.intp)
     active = np.zeros(N, dtype=bool)
+    # O(N) reusable scratch; no N-by-Nh cluster-size matrix. Empty scratch
+    # in the Python fallback keeps the local types definite without an O(N)
+    # allocation when acceleration is not requested.
+    scratch_n = N if compiled is not None else 0
+    seen = np.zeros(scratch_n + 1, dtype=bool)
+    unique = np.empty(scratch_n, dtype=np.intp)
+    logp_by_size = np.empty(scratch_n + 1, dtype=np.float64)
 
     sx, sy, sz = Z.shape
     offsets_3d = np.array([
@@ -163,35 +179,44 @@ def ptfce_exact(
                                 "current": step, "total": Nh,
                                 "phase": "thresholds"})
 
-        while cursor < N and sorted_vals[cursor] >= h:
-            i = cursor
-            active[i] = True
-            fi = int(sorted_flat[i])
-            xi = fi // (sy * sz)
-            yi = (fi % (sy * sz)) // sz
-            zi = fi % sz
+        if compiled is not None:
+            cursor = compiled.activate(
+                sorted_vals, sorted_flat, flat_to_rank, parent, uf_rank,
+                uf_size, active, offsets_3d, cursor, h, sx, sy, sz)
+        else:
+            while cursor < N and sorted_vals[cursor] >= h:
+                i = cursor
+                active[i] = True
+                fi = int(sorted_flat[i])
+                xi = fi // (sy * sz)
+                yi = (fi % (sy * sz)) // sz
+                zi = fi % sz
 
-            for d in range(6):
-                nx = xi + int(offsets_3d[d, 0])
-                ny = yi + int(offsets_3d[d, 1])
-                nz = zi + int(offsets_3d[d, 2])
-                if 0 <= nx < sx and 0 <= ny < sy and 0 <= nz < sz:
-                    nf = nx * sy * sz + ny * sz + nz
-                    ni = flat_to_rank[nf]
-                    if ni >= 0 and active[ni]:
-                        union(i, ni)
-            cursor += 1
+                for d in range(6):
+                    nx = xi + int(offsets_3d[d, 0])
+                    ny = yi + int(offsets_3d[d, 1])
+                    nz = zi + int(offsets_3d[d, 2])
+                    if 0 <= nx < sx and 0 <= ny < sy and 0 <= nz < sz:
+                        nf = nx * sy * sz + ny * sz + nz
+                        ni = int(flat_to_rank[nf])
+                        if ni >= 0 and active[ni]:
+                            union(i, ni)
+                cursor += 1
 
         if cursor == 0:
             continue
 
-        seen_sizes: set[int] = set()
-        for i in range(cursor):
-            r = find(i)
-            c = int(uf_size[r])
-            seen_sizes.add(c)
+        if compiled is not None:
+            seen_sizes = compiled.collect_sizes(parent, uf_size, cursor, seen, unique)
+        else:
+            seen_sizes: set[int] = set()
+            for i in range(cursor):
+                r = find(i)
+                c = int(uf_size[r])
+                seen_sizes.add(c)
 
         for c in seen_sizes:
+            c = int(c)
             key = (c, h_rounded)
             if key not in pvox_cache:
                 if h < z_est_thr:
@@ -201,19 +226,28 @@ def ptfce_exact(
                 else:
                     pval = pvox_clust(V, Rd, c, h, z_est_thr)
                 pvox_cache[key] = pval
+            if compiled is not None:
+                # Keep libm logarithms in Python, exactly as in the fallback.
+                logp_by_size[c] = -math.log(max(pvox_cache[key], 1e-300))
 
-        for i in range(cursor):
-            r = find(i)
-            c = int(uf_size[r])
-            key = (c, h_rounded)
-            accumulator[i] += -math.log(max(pvox_cache[key], 1e-300))
+        if compiled is not None:
+            compiled.accumulate(parent, uf_size, cursor, logp_by_size, accumulator)
+        else:
+            for i in range(cursor):
+                r = find(i)
+                c = int(uf_size[r])
+                key = (c, h_rounded)
+                accumulator[i] += -math.log(max(pvox_cache[key], 1e-300))
 
     t_sweep = time.perf_counter() - t0_sweep
 
     # ── Aggregate ────────────────────────────────────────────────────
     brain_acc = np.zeros(flat_Z.shape[0], dtype=np.float64)
-    for i in range(N):
-        brain_acc[sorted_flat[i]] = accumulator[i]
+    if compiled is not None:
+        brain_acc[sorted_flat] = accumulator
+    else:
+        for i in range(N):
+            brain_acc[sorted_flat[i]] = accumulator[i]
     brain_acc = brain_acc.reshape(Z.shape)
 
     active_mask = mask & (brain_acc > 0)
@@ -245,6 +279,7 @@ def ptfce_exact(
             "sweep_time": round(t_sweep, 4),
             "lut_time": round(t_lut, 4),
             "total_time": round(t_total, 4),
+            "uf_backend": "numba" if compiled is not None else "python",
             "n_positive_voxels": N,
             "n_thresholds_used": Nh,
             "n_pvox_cache_entries": len(pvox_cache),

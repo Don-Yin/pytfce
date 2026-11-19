@@ -38,10 +38,18 @@ Returns the [result dict](#result-dict).
 
 ```python
 ptfce_exact(Z, mask, z_est_thr=1.3, lut_density=120, use_lut=True, max_thresholds=500,
-            verbose=True, progress_queue=None, smooth_override=None) -> dict
+            verbose=True, progress_queue=None, smooth_override=None, uf_backend="python") -> dict
 ```
 
-Hybrid eTFCE–GRF: one union-find sweep retrieves every cluster exactly, with the same GRF p-values and aggregation as the baseline. `max_thresholds` sets the −log(p) grid (default 500, five times the baseline's); the other parameters are as in [`ptfce_baseline`](#ptfce_baseline). Returns the [result dict](#result-dict).
+Hybrid eTFCE–GRF retrieves exact cluster sizes at the sampled thresholds with one union-find sweep. `max_thresholds` sets the −log(p) grid (default 500, five times the baseline's). Both variants approximate the integral on their chosen grid and share the Gaussian random field probabilities and aggregation.
+
+| `uf_backend` | Execution |
+|--------------|-----------|
+| `"python"` (default) | Runs the Python union-find loops without importing Numba. |
+| `"numba"` | Runs compiled loops. Install `pytfce[accelerated]`; an unavailable or broken dependency raises an error when the sweep is needed. |
+| `"auto"` | Uses Numba if installed. Falls back to Python only if Numba is absent, not on a failed import or compilation. |
+
+The backends use the same thresholds, probability lookup table and aggregation. Tests compare `p`, `logp` and `Z_enhanced` bit for bit on the same software build; this is not a guarantee across platforms. See [`ptfce_baseline`](#ptfce_baseline) for the shared parameters and the [result dict](#result-dict) for outputs.
 
 ### Result dict
 
@@ -52,7 +60,7 @@ Hybrid eTFCE–GRF: one union-find sweep retrieves every cluster exactly, with t
 | `Z_enhanced` | Z-scores of the enhanced p-values |
 | `fwer_z_thresh` | GRF FWER Z-threshold (α = 0.05) for `Z_enhanced` |
 | `smoothness` | the [smoothness dict](#smoothness-dict) used |
-| `diagnostics` | timings, cache statistics and threshold-grid settings |
+| `diagnostics` | timings, cache statistics and threshold-grid settings; `ptfce_exact` also reports the selected `uf_backend` |
 
 A map with no positive voxel in the mask returns all-ones `p`, an infinite `fwer_z_thresh`, and empty `smoothness` and `diagnostics`.
 

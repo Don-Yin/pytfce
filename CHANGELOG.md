@@ -7,10 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-11-19
+
+### Added
+
+- Opt-in Numba union-find backend for `ptfce_exact`: install
+  `pytfce[accelerated]` and pass `uf_backend="numba"`. The default remains
+  `"python"`; `"auto"` falls back only when Numba is absent. GRF probabilities,
+  threshold grids and aggregation are unchanged, with bitwise-equivalence and
+  independent connected-component tests. The first compiled call includes
+  JIT compilation or cache-loading overhead.
+
 ### Changed
 
-- Redraw the README figures with 0.1.2: a weak-signal phantom where Bonferroni
-  misses most of the signal, and re-measured runtimes.
+- Show the weak-signal phantom where Bonferroni misses most of the signal;
+  clarify that both variants retain threshold-grid integration error and that
+  backend timings must use matching numerical settings.
 - `estimate_smoothness_from_residuals` uses all residuals by default
   (`n_sample=None`), as FSL does; the first 20 depended on row order.
 
@@ -120,7 +132,8 @@ from the two versions. Old LUT caches are invalidated automatically.
   plotting and terminal progress utilities.
 - Unit tests, CI and publishing workflows, and documentation.
 
-[Unreleased]: https://github.com/Don-Yin/pytfce/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/Don-Yin/pytfce/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/Don-Yin/pytfce/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/Don-Yin/pytfce/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/Don-Yin/pytfce/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Don-Yin/pytfce/releases/tag/v0.1.0

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pytfce"
-version = "0.1.2"
+version = "0.1.3"
 description = "Fast probabilistic Threshold-Free Cluster Enhancement in Python"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -36,6 +36,7 @@ plotting = ["matplotlib"]
 tui = ["rich"]
 all = ["matplotlib", "rich"]
 test = ["pytest"]
+accelerated = ["numba>=0.61"]
 
 [project.urls]
 Homepage = "https://github.com/Don-Yin/pytfce"

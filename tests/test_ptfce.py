@@ -7,7 +7,14 @@ import pytest
 
 from pytfce import ptfce_baseline, ptfce_exact
 
-EXPECTED_KEYS = {"p", "logp", "Z_enhanced", "smoothness", "fwer_z_thresh", "diagnostics"}
+EXPECTED_KEYS = {
+    "p",
+    "logp",
+    "Z_enhanced",
+    "smoothness",
+    "fwer_z_thresh",
+    "diagnostics",
+}
 
 # Shared kwargs to keep runs fast
 _FAST = {"Nh": 30, "lut_density": 30, "verbose": False}
@@ -16,8 +23,8 @@ _FAST_EXACT = {"max_thresholds": 60, "lut_density": 30, "verbose": False}
 
 # ── ptfce_baseline ─────────────────────────────────────────────────
 
-class TestPtfceBaseline:
 
+class TestPtfceBaseline:
     def test_returns_expected_keys(self, z_map, brain_mask):
         result = ptfce_baseline(z_map, brain_mask, **_FAST)
         assert EXPECTED_KEYS <= set(result.keys())
@@ -44,8 +51,8 @@ class TestPtfceBaseline:
 
 # ── ptfce_exact ────────────────────────────────────────────────────
 
-class TestPtfceExact:
 
+class TestPtfceExact:
     def test_returns_expected_keys(self, z_map, brain_mask):
         result = ptfce_exact(z_map, brain_mask, **_FAST_EXACT)
         assert EXPECTED_KEYS <= set(result.keys())
@@ -68,9 +75,9 @@ class TestPtfceExact:
 
 # ── cross-variant agreement ───────────────────────────────────────
 
-class TestCrossVariantAgreement:
 
-    @pytest.fixture(scope="class")
+class TestCrossVariantAgreement:
+    @pytest.fixture
     def both_results(self, z_map, brain_mask):
         r_base = ptfce_baseline(z_map, brain_mask, **_FAST)
         r_exact = ptfce_exact(z_map, brain_mask, **_FAST_EXACT)
@@ -89,8 +96,8 @@ class TestCrossVariantAgreement:
 
 # ── pure-noise volume ─────────────────────────────────────────────
 
-class TestPureNoise:
 
+class TestPureNoise:
     def test_baseline_few_significant(self, noise_z_map, noise_mask):
         result = ptfce_baseline(noise_z_map, noise_mask, **_FAST)
         fwer_z = result["fwer_z_thresh"]
@@ -109,6 +116,7 @@ class TestPureNoise:
 
 
 # ── helpers ────────────────────────────────────────────────────────
+
 
 def _dice(a: np.ndarray, b: np.ndarray) -> float:
     a, b = a.astype(bool), b.astype(bool)
